@@ -11,6 +11,7 @@ export type InstagramPublishActionState = { ok?: boolean; error?: string; mediaI
 
 export async function publishInstagramTestPostAction(
   _prev: InstagramPublishActionState | undefined,
+  _formData: FormData,
 ): Promise<InstagramPublishActionState> {
   const supabase = await createServerSupabaseClient();
   const {

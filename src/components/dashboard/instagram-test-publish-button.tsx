@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Send } from "lucide-react";
 
@@ -9,16 +9,15 @@ import { Button } from "@/components/ui/button";
 
 export function InstagramTestPublishButton({ disabled }: { disabled?: boolean }) {
   const router = useRouter();
-  const [state, action, pending] = useActionState(publishInstagramTestPostAction, undefined);
+  const [state, formAction, pending] = useActionState(publishInstagramTestPostAction, undefined);
+
+  useEffect(() => {
+    if (state?.ok) router.refresh();
+  }, [state?.ok, router]);
 
   return (
     <div className="space-y-2">
-      <form
-        action={async (fd) => {
-          await action(fd);
-          router.refresh();
-        }}
-      >
+      <form action={formAction}>
         <Button
           type="submit"
           size="sm"

@@ -16,12 +16,14 @@ type GraphListResponse<T> = {
   error?: { message?: string; type?: string; code?: number };
 };
 
+type GraphJsonBody<T> = T & { error?: { message?: string } };
+
 async function graphGet<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   const res = await fetch(url);
   const raw = await res.text();
-  let json: T & { error?: { message?: string } } = {} as T & { error?: { message?: string } };
+  let json: GraphJsonBody<T>;
   try {
-    json = raw ? (JSON.parse(raw) as T & { error?: { message?: string } }) : ({} as T);
+    json = (raw ? JSON.parse(raw) : {}) as GraphJsonBody<T>;
   } catch {
     return { ok: false, error: "Meta Graph yanıtı geçersiz." };
   }
