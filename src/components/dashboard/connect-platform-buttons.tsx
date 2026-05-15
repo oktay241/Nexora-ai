@@ -22,14 +22,18 @@ export function ConnectPlatformButtons() {
           Connect Instagram
         </a>
       </Button>
-      <Button asChild size="sm" className="gap-2 border border-cyan-500/25 bg-cyan-500/10 text-cyan-50 hover:bg-cyan-500/15">
-        <a href="/api/social/connect/start?platform=tiktok">
+      <Button
+        asChild
+        size="sm"
+        className="gap-2 border border-cyan-500/25 bg-cyan-500/10 text-cyan-50 hover:bg-cyan-500/15"
+      >
+        <a href="/dashboard/social?err=platform_not_supported">
           <TikTokIcon className="h-4 w-4" />
           Connect TikTok
         </a>
       </Button>
       <Button asChild size="sm" variant="secondary" className="border border-white/10 bg-white/[0.06]">
-        <a href="/dashboard/connections?autopilot=1">Activate AI Autopilot</a>
+        <a href="/dashboard/social?autopilot=1">Activate AI Autopilot</a>
       </Button>
     </div>
   );

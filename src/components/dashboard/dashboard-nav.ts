@@ -25,6 +25,6 @@ export const dashboardNav: DashboardNavItem[] = [
   { title: "Performans", href: "/dashboard/analytics", icon: BarChart3 },
   { title: "AI optimizasyon", href: "/dashboard/growth-engine", icon: Cpu },
   { title: "Hesaplar", href: "/dashboard/accounts", icon: Users },
-  { title: "Bağlantılar", href: "/dashboard/connections", icon: Plug },
+  { title: "Sosyal", href: "/dashboard/social", icon: Plug },
   { title: "Ayarlar", href: "/dashboard/settings", icon: Settings },
 ];
