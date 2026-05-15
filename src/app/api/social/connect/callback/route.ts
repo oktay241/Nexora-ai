@@ -1,12 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { saveInstagramConnectedAccount } from "@/lib/integrations/meta/save-connected-account";
-import {
-  exchangeMetaAuthorizationCode,
-  fetchMetaUserProfile,
-  META_OAUTH_STATE_COOKIE,
-} from "@/lib/integrations/meta/oauth";
+import { discoverInstagramBusinessAccount } from "@/lib/integrations/meta/instagram-discovery";
+import { exchangeMetaLongLivedUserToken } from "@/lib/integrations/meta/long-lived-token";
+import { exchangeMetaAuthorizationCode, META_OAUTH_STATE_COOKIE } from "@/lib/integrations/meta/oauth";
+import { persistInstagramSocialAccount } from "@/lib/integrations/meta/save-connected-social-account";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -47,13 +45,24 @@ export async function GET(request: Request) {
     );
   }
 
-  const profile = await fetchMetaUserProfile(tokenResult.accessToken);
-  if (profile.error) {
+  const longLived = await exchangeMetaLongLivedUserToken(tokenResult.accessToken);
+  const accessToken = longLived.ok ? longLived.token.accessToken : tokenResult.accessToken;
+  const tokenType = longLived.ok ? longLived.token.tokenType : (tokenResult.raw.token_type ?? "Bearer");
+  const expiresIn = longLived.ok ? longLived.token.expiresIn : (tokenResult.raw.expires_in ?? 3600);
+
+  const discovery = await discoverInstagramBusinessAccount(accessToken);
+  if (discovery.error) {
     return NextResponse.redirect(
       new URL(
-        `/dashboard/social?err=${encodeURIComponent(profile.error.slice(0, 120))}`,
+        `/dashboard/social?err=${encodeURIComponent(discovery.error.slice(0, 120))}`,
         reqUrl.origin,
       ),
+    );
+  }
+
+  if (!discovery.account) {
+    return NextResponse.redirect(
+      new URL("/dashboard/social?err=no_instagram_business", reqUrl.origin),
     );
   }
 
@@ -65,11 +74,13 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?next=/dashboard/social", reqUrl.origin));
   }
 
-  const save = await saveInstagramConnectedAccount({
+  const save = await persistInstagramSocialAccount({
     supabase,
     userId: user.id,
-    instagram: profile.instagram,
-    metaUserName: profile.me?.name ?? null,
+    discovered: discovery.account,
+    accessToken,
+    tokenType,
+    expiresIn,
   });
   if (save.error) {
     return NextResponse.redirect(

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { tryAutopilotInstagramPublishAfterGeneration } from "@/actions/instagram-publish";
 import { attachCreativeVisualToGeneration } from "@/lib/creative/attach-creative-visual";
 import { getOpenAIModel } from "@/lib/env";
 import { buildOperatorContextBlock } from "@/lib/operator/build-operator-context";
@@ -152,8 +153,18 @@ export async function generateAiContentPack(
     };
   }
 
+  await tryAutopilotInstagramPublishAfterGeneration({
+    userId: user.id,
+    generationId: inserted.id as string,
+    usageMode: (profile.usage_mode as string | null) ?? null,
+    caption: ai.caption,
+    hashtags: ai.hashtags,
+    title: String(ai.contentIdea ?? description).slice(0, 180),
+  });
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/ai-content");
   revalidatePath("/dashboard/scheduling");
+  revalidatePath("/dashboard/social");
   return { ok: true };
 }

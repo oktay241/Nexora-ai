@@ -47,6 +47,24 @@ export type ConnectedAccountRow = {
   updated_at: string;
 };
 
+/** Meta / Instagram native OAuth token store (migration 009+). */
+export type ConnectedSocialAccountRow = {
+  id: string;
+  user_id: string;
+  platform: "instagram" | "tiktok";
+  platform_user_id: string | null;
+  username: string | null;
+  access_token: string;
+  refresh_token: string | null;
+  expires_at: string | null;
+  token_type: string | null;
+  meta_page_id: string | null;
+  instagram_business_id: string | null;
+  account_type: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AiGenerationRow = {
   id: string;
   user_id: string;
@@ -80,8 +98,11 @@ export type ScheduledPostRow = {
   /** Buffer GraphQL Post id (migration 008+). */
   buffer_post_id?: string | null;
   buffer_channel_id?: string | null;
-  /** Buffer PostStatus: draft | needs_approval | scheduled | sending | sent | error */
+  /** Native: queued | publishing | published | failed; legacy Buffer değerleri de olabilir */
   publish_status?: string | null;
+  instagram_media_id?: string | null;
+  publish_error?: string | null;
+  published_at?: string | null;
   created_at: string;
   updated_at: string;
 };

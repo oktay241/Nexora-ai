@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { Instagram, Sparkles } from "lucide-react";
 
 import { ConnectPlatformButtons } from "@/components/dashboard/connect-platform-buttons";
+import { InstagramTestPublishButton } from "@/components/dashboard/instagram-test-publish-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listConnectedAccounts } from "@/lib/data/dashboard";
+import { loadInstagramSocialDashboardMeta } from "@/lib/data/social-accounts";
 import { isMetaOAuthConfigured } from "@/lib/integrations/meta/oauth";
 import { getUserProfile } from "@/lib/data/user";
 
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Sosyal bağlantılar",
-  description: "Instagram ve diğer platformları Nexora AI ile bağlayın.",
+  description: "Instagram ve Nexora AI otonom yayın.",
 };
 
 type Search = Record<string, string | string[] | undefined>;
@@ -24,6 +25,13 @@ function first(q: Search, key: string): string | undefined {
   const v = q[key];
   if (Array.isArray(v)) return v[0];
   return v;
+}
+
+function formatDt(iso: string | null) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(iso),
+  );
 }
 
 export default async function SocialConnectionsPage({
@@ -39,9 +47,10 @@ export default async function SocialConnectionsPage({
   const setup = first(q, "setup") === "1";
   const err = first(q, "err");
 
-  const accounts = await listConnectedAccounts();
-  const instagram = accounts.find((a) => a.platform === "instagram");
+  const meta = await loadInstagramSocialDashboardMeta(profile.usage_mode);
   const metaReady = isMetaOAuthConfigured();
+  const ig = meta.account;
+  const connectedIg = Boolean(ig?.instagram_business_id);
 
   return (
     <div className="space-y-8">
@@ -50,17 +59,18 @@ export default async function SocialConnectionsPage({
           Sosyal bağlantılar
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Instagram hesabınızı Meta OAuth ile güvenli şekilde bağlayın.
+          Instagram hesabınızı Meta OAuth ile bağlayın; Nexora AI görsel üretir, caption yazar ve
+          otonom modda yayınlar.
         </p>
       </div>
 
       {connected === "instagram" ? (
         <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
           Instagram hesabınız başarıyla bağlandı.
-          {instagram?.handle ? (
+          {ig?.username ? (
             <>
               {" "}
-              Kullanıcı: <span className="font-medium">@{instagram.handle}</span>
+              Kullanıcı: <span className="font-medium">@{ig.username}</span>
             </>
           ) : null}
         </p>
@@ -80,6 +90,14 @@ export default async function SocialConnectionsPage({
         </p>
       ) : null}
 
+      {connectedIg && !meta.professionalAccount ? (
+        <Card className="border-amber-500/25 bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-100">
+            Instagram Professional account required for AI autopilot publishing.
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="border-white/[0.08] bg-gradient-to-br from-pink-950/25 via-black/45 to-violet-950/20 shadow-inner-glow">
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
@@ -90,29 +108,45 @@ export default async function SocialConnectionsPage({
             <Badge
               variant="outline"
               className={
-                instagram?.status === "connected"
+                connectedIg
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
                   : "border-white/15 text-muted-foreground"
               }
             >
-              {instagram?.status === "connected" ? "Bağlı" : "Bağlı değil"}
+              {connectedIg ? "Bağlı" : "Bağlı değil"}
             </Badge>
             <Badge variant="outline" className="border-white/15 text-[10px]">
               {metaReady ? "Meta OAuth hazır" : "Kurulum gerekli"}
             </Badge>
+            {meta.autopilotActive ? (
+              <Badge variant="success" className="text-[10px]">
+                Autopilot aktif
+              </Badge>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {instagram?.handle ? (
-            <p className="text-sm text-muted-foreground">
-              Bağlı hesap: <span className="font-medium text-foreground">@{instagram.handle}</span>
-            </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile label="Kullanıcı" value={ig?.username ? `@${ig.username}` : "—"} />
+            <StatTile label="Yayın durumu" value={meta.lastPublishStatus ?? "—"} />
+            <StatTile label="Son yayın" value={formatDt(meta.lastPublishAt)} />
+            <StatTile
+              label="Hesap tipi"
+              value={ig?.account_type ?? (connectedIg ? "Business" : "—")}
+            />
+          </div>
+
+          {connectedIg ? (
+            <InstagramTestPublishButton disabled={!meta.professionalAccount} />
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Meta üzerinden Instagram Business / Creator hesabınızı bağlayın.
-            </p>
+            <ConnectPlatformButtons />
           )}
-          <ConnectPlatformButtons />
+
+          {!connectedIg ? (
+            <p className="text-[11px] text-muted-foreground">
+              Bağlantı sonrası tek görsel + AI caption ile test yayını yapabilirsiniz.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -127,6 +161,17 @@ export default async function SocialConnectionsPage({
           </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-black/30 p-3 backdrop-blur-md">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 font-display text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
