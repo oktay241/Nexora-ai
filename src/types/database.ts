@@ -47,7 +47,7 @@ export type ConnectedAccountRow = {
   updated_at: string;
 };
 
-/** Meta / Instagram native OAuth token store (migration 009+). */
+/** Meta / Instagram native OAuth token store (migrations 009+ / 011 consolidated). */
 export type ConnectedSocialAccountRow = {
   id: string;
   user_id: string;
@@ -56,11 +56,18 @@ export type ConnectedSocialAccountRow = {
   username: string | null;
   access_token: string;
   refresh_token: string | null;
+  /** Legacy alias; kept in sync with token_expires_at via DB trigger (migration 011). */
   expires_at: string | null;
+  token_expires_at: string | null;
   token_type: string | null;
   meta_page_id: string | null;
   instagram_business_id: string | null;
+  /** Canonical Graph IG user id; mirrored with instagram_business_id (migration 011). */
+  instagram_business_account_id: string | null;
   account_type: string | null;
+  autopilot_enabled: boolean | null;
+  last_publish_at: string | null;
+  last_publish_status: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -91,6 +98,12 @@ export type ScheduledPostRow = {
   scheduled_for: string;
   status: string;
   source_ai_generation_id: string | null;
+  /** Denormalized AI generation pointer; synced with source_ai_generation_id (migration 011). */
+  generation_id: string | null;
+  /** Image URL used for native Instagram publish (signed URL snapshot). */
+  image_url: string | null;
+  /** Full caption including hashtags at publish time. */
+  caption: string | null;
   persona: string | null;
   creative_type: string | null;
   /** Plan anındaki strateji / hook / reasoning snapshot (migration 006+). */

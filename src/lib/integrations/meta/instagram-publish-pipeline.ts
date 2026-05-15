@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getInstagramBusinessId } from "@/lib/data/social-accounts";
 import { isInstagramProfessionalAccount } from "@/lib/integrations/meta/instagram-discovery";
 import {
   createInstagramMediaContainer,
   publishInstagramMedia,
 } from "@/lib/social-providers/meta-instagram-publisher";
+import { logPublish, logPublishError } from "@/lib/logging/nexora-log";
 import type { ConnectedSocialAccountRow } from "@/types/database";
 
 export type InstagramPublishPipelineResult =
@@ -34,7 +36,8 @@ export async function publishGenerationToInstagram(input: {
     };
   }
 
-  if (!input.socialAccount.instagram_business_id || !input.socialAccount.access_token) {
+  const igBizId = getInstagramBusinessId(input.socialAccount);
+  if (!igBizId || !input.socialAccount.access_token) {
     return { ok: false, error: "Instagram Business hesabı veya erişim tokenı eksik." };
   }
 
@@ -72,6 +75,9 @@ export async function publishGenerationToInstagram(input: {
       scheduled_for: scheduledFor,
       status: "scheduled",
       source_ai_generation_id: input.generationId,
+      generation_id: input.generationId,
+      image_url: signed.signedUrl,
+      caption,
       publish_status: "queued",
     })
     .select("id")
@@ -90,7 +96,7 @@ export async function publishGenerationToInstagram(input: {
     .eq("user_id", input.userId);
 
   const container = await createInstagramMediaContainer({
-    instagramBusinessId: input.socialAccount.instagram_business_id,
+    instagramBusinessId: igBizId,
     imageUrl: signed.signedUrl,
     caption,
     accessToken: input.socialAccount.access_token,
@@ -100,12 +106,19 @@ export async function publishGenerationToInstagram(input: {
     await input.supabase
       .from("scheduled_posts")
       .update({ publish_status: "failed", publish_error: container.error })
-      .eq("id", postId);
+      .eq("id", postId)
+      .eq("user_id", input.userId);
+    await input.supabase
+      .from("connected_social_accounts")
+      .update({ last_publish_status: "failed" })
+      .eq("user_id", input.userId)
+      .eq("platform", "instagram");
+    logPublishError("instagram_container_failed", { postId, error: container.error });
     return { ok: false, error: container.error, scheduledPostId: postId };
   }
 
   const published = await publishInstagramMedia({
-    instagramBusinessId: input.socialAccount.instagram_business_id,
+    instagramBusinessId: igBizId,
     creationId: container.creationId,
     accessToken: input.socialAccount.access_token,
   });
@@ -114,7 +127,14 @@ export async function publishGenerationToInstagram(input: {
     await input.supabase
       .from("scheduled_posts")
       .update({ publish_status: "failed", publish_error: published.error })
-      .eq("id", postId);
+      .eq("id", postId)
+      .eq("user_id", input.userId);
+    await input.supabase
+      .from("connected_social_accounts")
+      .update({ last_publish_status: "failed" })
+      .eq("user_id", input.userId)
+      .eq("platform", "instagram");
+    logPublishError("instagram_publish_failed", { postId, error: published.error });
     return { ok: false, error: published.error, scheduledPostId: postId };
   }
 
@@ -127,9 +147,19 @@ export async function publishGenerationToInstagram(input: {
       published_at: publishedAt,
       publish_error: null,
     })
-    .eq("id", postId);
+    .eq("id", postId)
+    .eq("user_id", input.userId);
 
-  console.log("Nexora AI published successfully", {
+  await input.supabase
+    .from("connected_social_accounts")
+    .update({
+      last_publish_at: publishedAt,
+      last_publish_status: "published",
+    })
+    .eq("user_id", input.userId)
+    .eq("platform", "instagram");
+
+  logPublish("instagram_publish_success", {
     userId: input.userId,
     generationId: input.generationId,
     mediaId: published.mediaId,

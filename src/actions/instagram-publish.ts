@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getConnectedSocialAccount } from "@/lib/data/social-accounts";
+import { getConnectedSocialAccount, getInstagramBusinessId } from "@/lib/data/social-accounts";
 import { publishGenerationToInstagram } from "@/lib/integrations/meta/instagram-publish-pipeline";
+import { logPublishWarn } from "@/lib/logging/nexora-log";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ConnectedSocialAccountRow } from "@/types/database";
 
@@ -20,7 +21,7 @@ export async function publishInstagramTestPostAction(
   if (!user) return { error: "Oturum bulunamadı." };
 
   const social = await getConnectedSocialAccount("instagram");
-  if (!social?.instagram_business_id || !social.access_token) {
+  if (!social || !getInstagramBusinessId(social) || !social.access_token) {
     return { error: "Önce Instagram hesabını bağlayın." };
   }
 
@@ -72,19 +73,20 @@ export async function tryAutopilotInstagramPublishAfterGeneration(input: {
     .eq("platform", "instagram")
     .maybeSingle();
 
-  if (!social?.instagram_business_id || !social.access_token) return;
+  const row = social as ConnectedSocialAccountRow | null;
+  if (!row || !getInstagramBusinessId(row) || !row.access_token) return;
 
   const result = await publishGenerationToInstagram({
     supabase,
     userId: input.userId,
     generationId: input.generationId,
-    socialAccount: social as ConnectedSocialAccountRow,
+    socialAccount: row,
     caption: input.caption,
     hashtags: input.hashtags,
     title: input.title,
   });
 
   if (!result.ok) {
-    console.warn("[nexora.instagram.autopilot]", result.error);
+    logPublishWarn("autopilot_publish_failed", { error: result.error, userId: input.userId });
   }
 }

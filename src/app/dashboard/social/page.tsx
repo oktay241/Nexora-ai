@@ -8,7 +8,7 @@ import { InstagramTestPublishButton } from "@/components/dashboard/instagram-tes
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadInstagramSocialDashboardMeta } from "@/lib/data/social-accounts";
+import { loadInstagramSocialDashboardMeta, getInstagramBusinessId } from "@/lib/data/social-accounts";
 import { isMetaOAuthConfigured } from "@/lib/integrations/meta/oauth";
 import { getUserProfile } from "@/lib/data/user";
 
@@ -50,7 +50,7 @@ export default async function SocialConnectionsPage({
   const meta = await loadInstagramSocialDashboardMeta(profile.usage_mode);
   const metaReady = isMetaOAuthConfigured();
   const ig = meta.account;
-  const connectedIg = Boolean(ig?.instagram_business_id);
+  const connectedIg = Boolean(ig && getInstagramBusinessId(ig));
 
   return (
     <div className="space-y-8">

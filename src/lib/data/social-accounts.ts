@@ -1,6 +1,15 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ConnectedSocialAccountRow } from "@/types/database";
 
+/** Resolves IG business user id across legacy + migration 011 column names. */
+export function getInstagramBusinessId(
+  row: Partial<
+    Pick<ConnectedSocialAccountRow, "instagram_business_id" | "instagram_business_account_id">
+  >,
+): string | null {
+  return row.instagram_business_id ?? row.instagram_business_account_id ?? null;
+}
+
 export async function getConnectedSocialAccount(
   platform: "instagram" | "tiktok",
 ): Promise<ConnectedSocialAccountRow | null> {
@@ -69,7 +78,7 @@ export async function loadInstagramSocialDashboardMeta(
     accountType === "BUSINESS" ||
     accountType === "MEDIA_CREATOR" ||
     accountType === "CREATOR" ||
-    Boolean(row?.instagram_business_id);
+    Boolean(row && getInstagramBusinessId(row));
 
   return {
     account: row,
@@ -77,8 +86,9 @@ export async function loadInstagramSocialDashboardMeta(
       (lastPost?.published_at as string | null) ??
       (lastPost?.updated_at as string | null) ??
       null,
-    lastPublishStatus: (lastPost?.publish_status as string | null) ?? null,
-    autopilotActive: usageMode === "full_auto" && Boolean(row?.instagram_business_id),
+    lastPublishStatus:
+      (lastPost?.publish_status as string | null) ?? row?.last_publish_status ?? null,
+    autopilotActive: usageMode === "full_auto" && Boolean(row && getInstagramBusinessId(row)),
     professionalAccount: professional,
   };
 }

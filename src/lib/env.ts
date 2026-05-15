@@ -54,3 +54,15 @@ export function getBufferAccessToken(): string | null {
   const t = process.env.BUFFER_ACCESS_TOKEN?.trim();
   return t && t.length > 0 ? t : null;
 }
+
+/** Admin / schema introspection — never expose to the browser. */
+export function getSupabaseServiceRoleKey(): string | null {
+  const k = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return k && k.length > 0 ? k : null;
+}
+
+/** GET /api/debug/meta-schema — required header must match (ops only). */
+export function getNexoraSchemaDebugSecret(): string | null {
+  const s = process.env.NEXORA_SCHEMA_DEBUG_SECRET?.trim();
+  return s && s.length > 0 ? s : null;
+}
