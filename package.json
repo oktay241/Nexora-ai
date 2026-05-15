@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify:migration-011": "node scripts/verify-011-migration.cjs",
+    "verify:db-migration": "npm run verify:migration-011 && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
